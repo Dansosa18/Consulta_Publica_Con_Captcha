@@ -1,0 +1,241 @@
+openapi: 3.0.3
+info:
+  title: Consulta pública de estado de cuenta
+  version: 1.0.0
+  description: |
+    API pública de solo consulta para obtener el estado de cuenta asociado
+    a un código de medidor. No requiere autenticación y no expone teléfono,
+    dirección ni otros datos privados.
+
+servers:
+  - url: /
+
+tags:
+  - name: PublicAccounts
+    description: Consultas públicas de estados de cuenta por código de medidor.
+
+paths:
+  /api/v1/public/accounts/{meterCode}:
+    get:
+      tags:
+        - PublicAccounts
+      summary: Consultar estado de cuenta por código de medidor
+      description: |
+        Devuelve el estado de cuenta y movimientos recientes del medidor
+        identificado por su código. El nombre del titular se devuelve
+        enmascarado.
+      operationId: getPublicAccountStatus
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/MeterCode'
+      responses:
+        '200':
+          description: Estado de cuenta encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountStatusResponse'
+              example:
+                meterCode: CNT-0001
+                holderName: J*** P******
+                meterActive: true
+                pendingBalance: 245.50
+                recentReadings:
+                  - date: '2026-09-30'
+                    consumptionLiters: 18500
+                    amount: 245.50
+                recentPayments:
+                  - paymentDate: '2026-09-15'
+                    amount: 300.00
+                    receiptNumber: REC-20260915-00123
+        '400':
+          description: El código de medidor es inválido o no cumple las restricciones del contrato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-10-06T22:45:06Z'
+                status: 400
+                error: Bad Request
+                message: meterCode must contain only letters, numbers, hyphens, or underscores
+                path: /api/v1/public/accounts/invalid%20code
+        '404':
+          description: No existe un medidor asociado al código proporcionado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-10-06T22:45:06Z'
+                status: 404
+                error: Not Found
+                message: Account not found for the provided meter code
+                path: /api/v1/public/accounts/CNT-9999
+        '429':
+          description: Se excedió el límite de consultas permitido.
+          headers:
+            Retry-After:
+              description: Cantidad de segundos que el cliente debe esperar antes de reintentar.
+              schema:
+                type: integer
+                format: int32
+                minimum: 1
+              example: 60
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-10-06T22:45:06Z'
+                status: 429
+                error: Too Many Requests
+                message: Request rate limit exceeded
+                path: /api/v1/public/accounts/CNT-0001
+        '500':
+          description: Ocurrió un error interno al procesar la consulta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-10-06T22:45:06Z'
+                status: 500
+                error: Internal Server Error
+                message: An unexpected error occurred
+                path: /api/v1/public/accounts/CNT-0001
+
+components:
+  parameters:
+    MeterCode:
+      name: meterCode
+      in: path
+      required: true
+      description: |
+        Código único del medidor. El patrón provisional permite letras
+        mayúsculas o minúsculas, números, guiones y guiones bajos.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+        pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$'
+        example: CNT-0001
+
+  schemas:
+    AccountStatusResponse:
+      type: object
+      description: Estado de cuenta público del medidor, sin datos privados adicionales.
+      required:
+        - meterCode
+        - holderName
+        - meterActive
+        - pendingBalance
+        - recentReadings
+        - recentPayments
+      properties:
+        meterCode:
+          type: string
+          description: Código del medidor consultado.
+          example: CNT-0001
+        holderName:
+          type: string
+          description: Nombre del titular enmascarado.
+          example: J*** P******
+        meterActive:
+          type: boolean
+          description: Indica si el medidor está activo.
+          example: true
+        pendingBalance:
+          type: number
+          multipleOf: 0.01
+          description: Saldo pendiente expresado con dos decimales.
+          example: 245.50
+        recentReadings:
+          type: array
+          description: Lecturas recientes del medidor.
+          items:
+            $ref: '#/components/schemas/RecentReading'
+        recentPayments:
+          type: array
+          description: Pagos recientes asociados al estado de cuenta.
+          items:
+            $ref: '#/components/schemas/RecentPayment'
+
+    RecentReading:
+      type: object
+      required:
+        - date
+        - consumptionLiters
+        - amount
+      properties:
+        date:
+          type: string
+          format: date
+          description: Fecha de la lectura.
+          example: '2026-09-30'
+        consumptionLiters:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Consumo registrado en litros.
+          example: 18500
+        amount:
+          type: number
+          multipleOf: 0.01
+          description: Importe facturado por la lectura, con dos decimales.
+          example: 245.50
+
+    RecentPayment:
+      type: object
+      required:
+        - paymentDate
+        - amount
+        - receiptNumber
+      properties:
+        paymentDate:
+          type: string
+          format: date
+          description: Fecha en que se registró el pago.
+          example: '2026-09-15'
+        amount:
+          type: number
+          multipleOf: 0.01
+          description: Importe pagado, con dos decimales.
+          example: 300.00
+        receiptNumber:
+          type: string
+          description: Número de recibo del pago.
+          example: REC-20260915-00123
+
+    ErrorResponse:
+      type: object
+      description: Formato común para errores de la API.
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Fecha y hora del error en formato ISO 8601.
+          example: '2026-10-06T22:45:06Z'
+        status:
+          type: integer
+          format: int32
+          description: Código HTTP del error.
+          example: 400
+        error:
+          type: string
+          description: Descripción breve y estándar del tipo de error.
+          example: Bad Request
+        message:
+          type: string
+          description: Mensaje seguro para el consumidor, sin stack traces, SQL ni datos internos.
+          example: Invalid meter code
+        path:
+          type: string
+          description: Ruta HTTP que originó el error.
+          example: /api/v1/public/accounts/invalid-code

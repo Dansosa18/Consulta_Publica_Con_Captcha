@@ -1,0 +1,15 @@
+# Maven
+target/
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Local environment and credentials
+.env
+application-local.properties
+application-local.yml
