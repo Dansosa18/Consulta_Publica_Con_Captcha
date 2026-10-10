@@ -20,8 +20,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final long expirationNanos;
 
     public RateLimitInterceptor(
-            @Value("${ratelimit.capacity:10}") int capacity,
-            @Value("${ratelimit.refill-seconds:60}") long refillSeconds
+            @Value("${ratelimit.capacity}") int capacity,
+            @Value("${ratelimit.refill-seconds}") long refillSeconds
     ) {
         if (capacity <= 0 || refillSeconds <= 0) {
             throw new IllegalArgumentException("Rate limit capacity and refill seconds must be positive");
