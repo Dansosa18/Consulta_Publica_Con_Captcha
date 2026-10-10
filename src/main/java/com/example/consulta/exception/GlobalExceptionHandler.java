@@ -44,9 +44,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TooManyRequestsException.class)
-    public ResponseEntity<ErrorResponse> handleTooManyRequests(HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleTooManyRequests(
+            TooManyRequestsException exception,
+            HttpServletRequest request
+    ) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Retry-After", "60");
+        headers.set("Retry-After", Long.toString(exception.getRetryAfterSeconds()));
         return response(HttpStatus.TOO_MANY_REQUESTS, "Request rate limit exceeded", request, headers);
     }
 

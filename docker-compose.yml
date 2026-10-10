@@ -1,0 +1,20 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: consulta-service-mariadb
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MARIADB_DATABASE: oficina_agua
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Define MARIADB_ROOT_PASSWORD in .env}
+      DB_USER: ${DB_USER:?Define DB_USER in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in .env}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./docker/initdb/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./docker/initdb/02-seed-dev.sql:/docker-entrypoint-initdb.d/02-seed-dev.sql:ro
+      - ./docker/initdb/02-create-readonly-user.sh:/docker-entrypoint-initdb.d/03-create-readonly-user.sh:ro
+
+volumes:
+  mariadb-data:

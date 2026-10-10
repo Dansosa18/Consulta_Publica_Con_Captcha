@@ -48,11 +48,32 @@ Ejemplo:
 GET http://localhost:8081/api/v1/public/accounts/CNT-0001
 ```
 
+## Rate limit
+
+El endpoint público permite por defecto 10 solicitudes por minuto por IP.
+La capacidad y el intervalo son configurables en
+`src/main/resources/application.properties`:
+
+```properties
+ratelimit.capacity=10
+ratelimit.refill-seconds=60
+```
+
+Cuando se excede el límite, responde `429` con un `ErrorResponse` y el header
+`Retry-After`, indicando los segundos reales hasta el siguiente cupo. Las
+solicitudes que llegan al endpoint, incluidas las que terminan en `400`, se
+consideran para el límite.
+
+La IP se obtiene mediante `request.getRemoteAddr()`. No se acepta
+`X-Forwarded-For` directamente porque puede falsificarse. Al integrar Next.js
+o nginx, se deberá configurar una lista explícita de proxies confiables antes
+de considerar ese header para recuperar la IP original.
+
 ## Estado actual
 
-- El Controller devuelve datos fijos.
-- Falta conectar la base de datos en modo solo lectura con `ddl-auto: validate`.
-- Falta implementar el rate limit por IP.
+- El Controller delega la consulta al Service, que lee la base de datos en
+  modo solo lectura con `ddl-auto: validate`.
+- El rate limit por IP está implementado con expiración de entradas inactivas.
 - Falta la integración con Next.js.
 
 ## Reglas
