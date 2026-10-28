@@ -18,11 +18,18 @@ Microservicio de consulta pública de estado de cuenta por código de medidor
 Desde la raíz del proyecto:
 
 ```powershell
+docker compose --env-file dev-db/.env -f dev-db/docker-compose.yml up -d
 mvn clean compile
 mvn spring-boot:run
 ```
 
 El servicio utiliza el puerto `8081`.
+
+Para una instalación local nueva, copia primero `dev-db/.env.example` a
+`dev-db/.env`. La base de desarrollo crea el usuario `consulta_ro` con
+permisos de solo lectura y deja MariaDB disponible en el puerto `3307`.
+Los valores de conexión pueden sobrescribirse mediante las variables
+`DB_URL`, `DB_USER`, `DB_PASSWORD` e `INTERNAL_TOKEN`.
 
 ## Contrato y código generado
 

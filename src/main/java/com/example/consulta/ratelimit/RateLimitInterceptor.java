@@ -7,6 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,17 +22,20 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final int capacity;
     private final long refillSeconds;
     private final long expirationNanos;
+    private final byte[] internalToken;
 
     public RateLimitInterceptor(
             @Value("${ratelimit.capacity}") int capacity,
-            @Value("${ratelimit.refill-seconds}") long refillSeconds
+            @Value("${ratelimit.refill-seconds}") long refillSeconds,
+            @Value("${internal.token}") String internalToken
     ) {
-        if (capacity <= 0 || refillSeconds <= 0) {
+        if (capacity <= 0 || refillSeconds <= 0 || internalToken.isBlank()) {
             throw new IllegalArgumentException("Rate limit capacity and refill seconds must be positive");
         }
         this.capacity = capacity;
         this.refillSeconds = refillSeconds;
         this.expirationNanos = Duration.ofSeconds(refillSeconds).toNanos();
+        this.internalToken = internalToken.getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
@@ -37,7 +44,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             HttpServletResponse response,
             Object handler
     ) {
-        String clientIp = request.getRemoteAddr();
+        String clientIp = resolveClientIp(request);
         long now = System.nanoTime();
         removeExpiredBuckets(now);
 
@@ -55,6 +62,56 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         throw new TooManyRequestsException(retryAfterSeconds);
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        String internalTokenHeader = request.getHeader("X-Internal-Token");
+        if (isValidInternalToken(internalTokenHeader) && forwardedFor != null) {
+            String forwardedIp = forwardedFor.split(",")[0].trim();
+            if (isIpAddress(forwardedIp)) {
+                return forwardedIp;
+            }
+        }
+        return request.getRemoteAddr();
+    }
+
+    private boolean isValidInternalToken(String candidate) {
+        return candidate != null
+                && MessageDigest.isEqual(
+                internalToken,
+                candidate.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    private boolean isIpAddress(String value) {
+        if (value.isBlank()) {
+            return false;
+        }
+        if (value.contains(":")) {
+            try {
+                return InetAddress.getByName(value).getHostAddress().contains(":");
+            } catch (UnknownHostException exception) {
+                return false;
+            }
+        }
+        String[] octets = value.split("\\.", -1);
+        if (octets.length != 4) {
+            return false;
+        }
+        for (String octet : octets) {
+            if (octet.isEmpty() || !octet.chars().allMatch(Character::isDigit)) {
+                return false;
+            }
+            try {
+                if (Integer.parseInt(octet) > 255) {
+                    return false;
+                }
+            } catch (NumberFormatException exception) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void removeExpiredBuckets(long now) {
