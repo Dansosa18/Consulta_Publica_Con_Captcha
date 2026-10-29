@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
-import ChatbotWidgetScript from "./ChatbotWidgetScript";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,15 +19,14 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  const chatbotWidgetUrl =
-    process.env.NEXT_PUBLIC_CHATBOT_WIDGET_URL ??
-    "http://localhost:3000/widget.js";
-
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         {children}
-        <ChatbotWidgetScript src={chatbotWidgetUrl} />
+        <Script
+          src="https://nelson-lookup-char-calculators.trycloudflare.com/widget.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

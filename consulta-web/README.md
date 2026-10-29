@@ -35,23 +35,17 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Chatbot opcional
+## Chatbot
 
-El chatbot es un servicio independiente de esta aplicación. La página de
-consulta sigue funcionando si el widget no está disponible o no puede cargar.
-Configura su URL pública mediante:
-
-```env
-NEXT_PUBLIC_CHATBOT_WIDGET_URL=http://localhost:3000/widget.js
-```
-
-La aplicación de consulta se sirve en `http://localhost:4000`; el puerto
-`3000` se reserva para el widget del chatbot.
+El chatbot es un servicio independiente de esta aplicación y se carga desde
+`https://nelson-lookup-char-calculators.trycloudflare.com/widget.js`. La página
+de consulta sigue funcionando si el widget no está disponible o no puede
+cargar.
 
 ## CAPTCHA
 
-En desarrollo local, el CAPTCHA se muestra usando las claves oficiales de
-prueba de reCAPTCHA v2. Para usarlo, configura las variables así:
+En desarrollo local, el CAPTCHA permanece habilitado usando las claves
+oficiales de prueba de reCAPTCHA v2. Configura las variables así:
 
 ```env
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=tu-site-key-de-prueba
@@ -70,6 +64,10 @@ RECAPTCHA_SECRET_KEY=tu-secret-key-real
 DISABLE_CAPTCHA=false
 NEXT_PUBLIC_DISABLE_CAPTCHA=false
 ```
+
+Si necesitas diagnosticar temporalmente el flujo sin CAPTCHA en desarrollo,
+puedes cambiar ambas variables a `true`, pero no uses esa configuración en
+producción.
 
 La clave secreta nunca debe exponerse al navegador. Las claves genéricas de
 prueba o un dominio no registrado pueden hacer que la validación falle aunque
